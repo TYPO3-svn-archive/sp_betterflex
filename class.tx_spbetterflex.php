@@ -40,7 +40,11 @@
 				// Get extension name
 				$sExtName = '';
 				foreach ($aExtKeys as $sName => $aValue) {
-					$sTempName = ($sName == 'tt_news') ? '9' : $sName; // Bugfix for tt_news
+					$sTempName = ($sName == 'tt_board')    ? '2' : $sTempName; // Bugfix for tt_board !
+					$sTempName = ($sName == 'tt_guest')    ? '3' : $sTempName; // Bugfix for tt_guest
+					$sTempName = ($sName == 'tt_board')    ? '4' : $sTempName; // Bugfix for tt_board !
+					$sTempName = ($sName == 'tt_products') ? '5' : $sTempName; // Bugfix for tt_products
+					$sTempName = ($sName == 'tt_news')     ? '9' : $sName;     // Bugfix for tt_news
 					if (strpos($sKey, $sTempName) !== false) {
 						$sExtName = $sName;
 						unset($aExtKeys[$sName]);
@@ -175,7 +179,11 @@
 			// Try to get the name from list_type for default extensions
 			if ($paRow['CType'] == 'list' && strlen($paRow['list_type'])) {
 				$sExtName = preg_replace('/_pi./', '', (string) $paRow['list_type']);
-				$sExtName = ($sExtName == '9') ? 'tt_news' : $sExtName; // Bugfix for tt_news
+				$sExtName = ($sExtName == '2') ? 'tt_board' : $sExtName;    // Bugfix for tt_board
+				$sExtName = ($sExtName == '3') ? 'tt_guest' : $sExtName;    // Bugfix for tt_guest
+				$sExtName = ($sExtName == '4') ? 'tt_board' : $sExtName;    // Bugfix for tt_board
+				$sExtName = ($sExtName == '5') ? 'tt_products' : $sExtName; // Bugfix for tt_products
+				$sExtName = ($sExtName == '9') ? 'tt_news' : $sExtName;     // Bugfix for tt_news
 			}
 
 			// If no name was found until now try to find the name in other db fields
@@ -205,8 +213,12 @@
 		 * @return Array with fieldnames
 		 */
 		public function aGetExcludedFields ($psExtName='', $piPID=0) {
+			if (!strlen($psExtName)) {
+				return array();
+			}
+
 			global $BE_USER;
-			$aFields	= array();
+			$aFields = array();
 
 			// Get fields from TSConfig
 			$aTSConfig = t3lib_BEfunc::getPagesTSconfig((int) $piPID);

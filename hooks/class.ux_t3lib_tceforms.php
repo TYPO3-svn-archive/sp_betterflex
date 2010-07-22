@@ -23,6 +23,9 @@
 	***************************************************************/
 
 
+	require_once(t3lib_extMgm::extPath('sp_betterflex') . 'class.tx_spbetterflex.php');
+
+
 	class ux_t3lib_TCEforms extends t3lib_TCEforms {
 
 		/**
@@ -44,14 +47,13 @@
 
 			// Get flexform items to exclude
 			if ($paFieldValue['config']['special'] && $paFieldValue['config']['special'] == 'exclude') {
-				require_once(t3lib_extMgm::extPath('sp_betterflex').'class.tx_spbetterflex.php');
-				$oFlex = t3lib_div::makeInstance('tx_spbetterflex');
+				$oFlex      = t3lib_div::makeInstance('tx_spbetterflex');
 				$aFlexItems = $oFlex->aGetFlexItems();
 				unset($oFlex);
 
 				if (is_array($aFlexItems)) {
 					foreach ($aFlexItems as $aFlexItem) {
-						$aItems[] = array(ereg_replace(':$', '', $aFlexItem[0]), $aFlexItem[1], '', '');
+						$aItems[] = array(rtrim($aFlexItem[0], ':'), $aFlexItem[1], '', '');
 					}
 				}
 			}

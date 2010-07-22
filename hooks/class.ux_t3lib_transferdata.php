@@ -23,6 +23,9 @@
 	***************************************************************/
 
 
+	require_once(t3lib_extMgm::extPath('sp_betterflex').'class.tx_spbetterflex.php');
+
+
 	class ux_t3lib_transferData extends t3lib_transferData {
 
 		/**
@@ -44,7 +47,6 @@
 
 			if ((string) $psSpecialKey == 'exclude') {
 				// Get all flexform fields
-				require_once(t3lib_extMgm::extPath('sp_betterflex').'class.tx_spbetterflex.php');
 				$oFlex = t3lib_div::makeInstance('tx_spbetterflex');
 				$aFlexItems = $oFlex->aGetFlexItems();
 				unset($oFlex);
@@ -69,7 +71,7 @@
 					foreach ($aExcludeFields as $sFieldName) {
 						foreach ($aFlexItems as $aField) {
 							if (strpos($aField[1], $sFieldName) !== false) {
-								$aDataAcc[] = rawurlencode($aField[1]).'|'.rawurlencode(ereg_replace(':$','',$aField[0]));
+								$aDataAcc[] = rawurlencode($aField[1]).'|'.rawurlencode(rtrim($aField[0], ':'));
 							}
 						}
 					}

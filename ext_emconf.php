@@ -3,7 +3,7 @@
 ########################################################################
 # Extension Manager/Repository config file for ext: "sp_betterflex"
 #
-# Auto generated 11-09-2009 09:21
+# Auto generated 04-11-2009 11:23
 #
 # Manual updates:
 # Only the data in the array - anything else is removed by next write.
