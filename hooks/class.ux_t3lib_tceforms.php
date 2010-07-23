@@ -2,7 +2,7 @@
 	/***************************************************************
 	*  Copyright notice
 	*
-	*  (c) 2009 Kai Vogel <kai.vogel ( at ) speedprogs.de>
+	*  (c) 2010 Kai Vogel <kai.vogel ( at ) speedprogs.de>
 	*  All rights reserved
 	*
 	*  This script is part of the TYPO3 project. The TYPO3 project is
@@ -34,19 +34,17 @@
 		 * Thist method is used to show all fields in the selector box
 		 * in group configuration!
 		 *
-		 * @param	array		The array of items (label,value,icon)
-		 * @param	array		The "columns" array for the field (from TCA)
-		 * @param	array		TSconfig for the table/row
-		 * @param	string		The fieldname
-		 * @return	array		The $aItems array modified.
+		 * @param array  The array of items (label,value,icon)
+		 * @param array  The "columns" array for the field (from TCA)
+		 * @param array  TSconfig for the table/row
+		 * @param string The fieldname
+		 * @return array The modified $aItems array
 		 */
-		function addSelectOptionsToItemArray ($paItems, $paFieldValue, $paTSconfig, $psField) {
-			global $TCA;
-
+		public function addSelectOptionsToItemArray ($paItems, $paFieldValue, $paTSconfig, $psField) {
 			$aItems = parent::addSelectOptionsToItemArray($paItems, $paFieldValue, $paTSconfig, $psField);
 
 			// Get flexform items to exclude
-			if ($paFieldValue['config']['special'] && $paFieldValue['config']['special'] == 'exclude') {
+			if (!empty($paFieldValue['config']['special']) && $paFieldValue['config']['special'] == 'exclude') {
 				$oFlex      = t3lib_div::makeInstance('tx_spbetterflex');
 				$aFlexItems = $oFlex->aGetFlexItems();
 				unset($oFlex);
@@ -60,6 +58,7 @@
 
 			return $aItems;
 		}
+
 	}
 
 

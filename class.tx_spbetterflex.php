@@ -2,7 +2,7 @@
 	/***************************************************************
 	*  Copyright notice
 	*
-	*  (c) 2009 Kai Vogel <kai.vogel ( at ) speedprogs.de>
+	*  (c) 2010 Kai Vogel <kai.vogel ( at ) speedprogs.de>
 	*  All rights reserved
 	*
 	*  This script is part of the TYPO3 project. The TYPO3 project is
@@ -26,241 +26,112 @@
 	class tx_spbetterflex {
 
 		/**
+		 * @var array Replacements for old extensions
+		 */
+		protected $aReplace = array(
+				'2' => 'tt_board',
+				'3' => 'tt_guest',
+				'4' => 'tt_board',
+				'5' => 'tt_products',
+				'9' => 'tt_news',
+			);
+
+
+		/**
 		 * Get exclude items
 		 *
 		 * @return Array with all flexform fields
 		 */
 		public function aGetFlexItems () {
-			global $TYPO3_LOADED_EXT, $LANG;
-			$aFlexForms	= $this->aGetAllFlexForms();
-			$aExtKeys	= $TYPO3_LOADED_EXT;
-			$aItems		= array();
+			$aReturn = array();
 
-			foreach ($aFlexForms as $sKey => $aFlexform) {
-				// Get extension name
-				$sExtName = '';
-				foreach ($aExtKeys as $sName => $aValue) {
-					$sTempName = ($sName == 'tt_board')    ? '2' : $sTempName; // Bugfix for tt_board !
-					$sTempName = ($sName == 'tt_guest')    ? '3' : $sTempName; // Bugfix for tt_guest
-					$sTempName = ($sName == 'tt_board')    ? '4' : $sTempName; // Bugfix for tt_board !
-					$sTempName = ($sName == 'tt_products') ? '5' : $sTempName; // Bugfix for tt_products
-					$sTempName = ($sName == 'tt_news')     ? '9' : $sName;     // Bugfix for tt_news
-					if (strpos($sKey, $sTempName) !== false) {
-						$sExtName = $sName;
-						unset($aExtKeys[$sName]);
-						break;
-					}
-				}
-				if (!strlen($sExtName)) {
-					continue;
-				}
-
-				// Get speaking extension name
-				$sSpeakingName = $this->sGetSpeakingName($sExtName);
-
-				// Add flexform fields
-				if (is_array($aFlexform['sheets'])) {
-					foreach ($aFlexform['sheets'] as $sKey => $aTab) {
-						$aFields = $aTab['ROOT']['el'];
-
-						if (is_array($aFields)) {
-							foreach ($aFields as $sName => $aConfig) {
-								$sLabel = '[FX] '.$sSpeakingName.': '.$LANG->sl($aConfig['TCEforms']['label']);
-								$aItems[] = array($sLabel, 'tt_content:'.$sExtName.'_'.trim($sName, '. '));
-							}
-						}
-					}
-				}
-			}
-
-			return $aItems;
-		}
-
-
-		/**
-		 * Get an array of all flexforms from $TCA
-		 *
-		 * @return Array with flexforms
-		 */
-		protected function aGetAllFlexForms () {
-			global $TCA;
-			$aLoadedForms = $TCA['tt_content']['columns']['pi_flexform']['config']['ds'];
-
-			$aForms = array();
-
-			if (is_array($aLoadedForms)) {
-				foreach ($aLoadedForms as $sKey => $sValue) {
-					$aForms[$sKey] = $this->aGetFlexContent($sValue);
-				}
-			}
-
-			return $aForms;
-		}
-
-
-		/**
-		 * Get speaking extension name from ext_emconf.php
-		 *
-		 * @return string with speaking name
-		 */
-		protected function sGetSpeakingName ($psExtKey) {
-			if (!strlen($psExtKey)) {
-				return '';
-			}
-
-			global $TYPO3_LOADED_EXT;
-			$sSpeakingName = $psExtKey;
-
-			if (is_array($TYPO3_LOADED_EXT)) {
-				$sFileName = $TYPO3_LOADED_EXT[$psExtKey]['siteRelPath'].'ext_emconf.php';
-				$sFileName = t3lib_div::getFileAbsFileName($sFileName);
-
-				if ($sFileName && @is_file($sFileName)) {
-					$_EXTKEY = $psExtKey;
-					$EM_CONF = array();
-					include($sFileName);
-					if (is_array($EM_CONF[$psExtKey]) && strlen($EM_CONF[$psExtKey]['title'])) {
-						$sSpeakingName = htmlspecialchars($EM_CONF[$psExtKey]['title']);
-					}
-				}
-			}
-
-			return $sSpeakingName;
-		}
-
-
-		/**
-		 * Remove excluded fields from flexform in backend form
-		 *
-		 */
-		public function getFlexFormDS_postProcessDS (&$paStructure, $paConfig, $paRow, $psTable, $psFieldName) {
-			if (!is_array($paStructure['sheets']) || !is_array($paRow)) {
-				return;
-			}
-
-			$sExtName		= $this->sGetExtName($paRow);
-			$aFieldNames	= $this->aGetExcludedFields($sExtName, $paRow['pid']);
-
-			if (is_array($aFieldNames)) {
-				foreach ($aFieldNames as $sFieldName) {
-					foreach ($paStructure['sheets'] as $sKey => $mTab) {
-						// Check for file reference
-						if (is_string($mTab) && strtolower(substr($mTab, -4)) == '.xml') {
-							$paStructure['sheets'][$sKey] = $this->aGetFlexContent($mTab);
-						}
-
-						// Remove field
-						if (array_key_exists($sFieldName, $paStructure['sheets'][$sKey]['ROOT']['el'])) {
-							unset($paStructure['sheets'][$sKey]['ROOT']['el'][$sFieldName]);
-						}
-
-						// Remove whole tab if empty
-						if (!count($paStructure['sheets'][$sKey]['ROOT']['el'])) {
-							unset($paStructure['sheets'][$sKey]);
-						}
-					}
-				}
-			}
-		}
-
-
-		/**
-		 * Get extension from db
-		 *
-		 * @return String with extension name
-		 */
-		protected function sGetExtName ($paRow) {
-			// Get configuration
-			global $TCA, $TYPO3_LOADED_EXT;
-			$aFlexList		= $TCA['tt_content']['columns']['pi_flexform']['config']['ds'];
-			$sIdentifier	= '';
-			$sExtName		= '';
-
-			// Try to get the name from list_type for default extensions
-			if ($paRow['CType'] == 'list' && strlen($paRow['list_type'])) {
-				$sExtName = preg_replace('/_pi./', '', (string) $paRow['list_type']);
-				$sExtName = ($sExtName == '2') ? 'tt_board' : $sExtName;    // Bugfix for tt_board
-				$sExtName = ($sExtName == '3') ? 'tt_guest' : $sExtName;    // Bugfix for tt_guest
-				$sExtName = ($sExtName == '4') ? 'tt_board' : $sExtName;    // Bugfix for tt_board
-				$sExtName = ($sExtName == '5') ? 'tt_products' : $sExtName; // Bugfix for tt_products
-				$sExtName = ($sExtName == '9') ? 'tt_news' : $sExtName;     // Bugfix for tt_news
-			}
-
-			// If no name was found until now try to find the name in other db fields
-			if (!strlen($sExtName) && is_array($TYPO3_LOADED_EXT)) {
-				foreach ($TYPO3_LOADED_EXT as $sName => $aValue) {
-					// Ignore system extensions
-					if ($aValue['type'] == 'S' || $sName == 'version') {
-						continue;
-					}
-
-					// Check field content
-					$sDBContent = $paRow['list_type'].'|'.$paRow['CType'].'|'.$paRow['pi_flexform'];
-					if ((strpos($sDBContent, $sName) !== false)) {
-						$sExtName = $sName;
-						break;
-					}
-				}
-			}
-
-			return $sExtName;
-		}
-
-
-		/**
-		 * Get a list of excluded flexform fields from db and ts_config
-		 *
-		 * @return Array with fieldnames
-		 */
-		public function aGetExcludedFields ($psExtName='', $piPID=0) {
-			if (!strlen($psExtName)) {
+			// Get registered flexforms
+			$aFlexForms = $this->aGetFlexForms();
+			if (!is_array($aFlexForms)) {
 				return array();
 			}
 
-			global $BE_USER;
-			$aFields = array();
+			foreach ($aFlexForms as $sExtKey => $aFlexform) {
+				// Get extension name
+				$sExtName = $this->sGetExtName($sExtKey);
 
-			// Get fields from TSConfig
-			$aTSConfig = t3lib_BEfunc::getPagesTSconfig((int) $piPID);
-			$aTSConfig = $aTSConfig['TCEFORM.']['tt_content.'];
-			foreach ($aTSConfig as $sKey => $aValue) {
-				if (strpos($sKey, $psExtName) !== false && $aValue['disabled']) {
-					$aFields[] = trim(str_replace($psExtName.'_', '', $sKey), '. ');
-				}
-			}
+				// Get flexform sheets
+				$aSheets = (isset($aFlexform['sheets'])) ? $aFlexform['sheets'] : array($aFlexform);
 
-			// Get fields from db
-			$aExcludeFields = explode(',', $BE_USER->groupData['non_exclude_fields']);
-			if (is_array($aExcludeFields)) {
-				foreach ($aExcludeFields as $sExcludeField) {
-					list($sTable, $sName) = explode(':', $sExcludeField);
-					if (strpos($sName, $psExtName) !== false) {
-						$aFields[] = str_replace($psExtName.'_', '', $sName);
+				// Add flexform fields
+				if (is_array($aSheets)) {
+					foreach ($aSheets as $aTab) {
+						$aItems  = $this->aGetAccessListItems($aTab, $sExtKey, $sExtName);
+						$aReturn = array_merge($aReturn, $aItems);
 					}
 				}
 			}
 
-			return $aFields;
+			return $aReturn;
+		}
+
+
+		/**
+		 * Get an array of loaded flexforms from $TCA
+		 *
+		 * @return Array with flexforms
+		 */
+		protected function aGetFlexForms () {
+			$aExtKeys = $GLOBALS['TYPO3_LOADED_EXT'];
+			$aForms   = array();
+			$aResult  = array();
+
+			// Get loaded flexforms
+			$aLoadedForms = $GLOBALS['TCA']['tt_content']['columns']['pi_flexform']['config']['ds'];
+			unset($aLoadedForms['default']);
+
+			// Get extensions with registered flexform
+			if (is_array($aLoadedForms)) {
+				foreach ($aLoadedForms as $sFlexKey => $sFlexData) {
+					$sTempKey  = str_replace(array_keys($this->aReplace), array_values($this->aReplace), $sFlexKey);
+					$sFinalKey = '';
+
+					// Check if extension key exists
+					foreach ($aExtKeys as $sExtKey => $aExtData) {
+						if (strpos($sTempKey, $sExtKey) !== FALSE) {
+							$sFinalKey = $sExtKey;
+							unset($aExtKeys[$sExtKey]);
+							break;
+						}
+					}
+
+					if (!strlen($sFinalKey)) {
+						continue;
+					}
+
+					// Get flexform content
+					$aResult[$sFinalKey] = $this->aGetFlexContent($sFlexData);
+				}
+			}
+
+			return $aResult;
 		}
 
 
 		/**
 		 * Load a flexform structure from file or string into an array
 		 *
+		 * @param string  $psStructure XML structure of the flexform
+		 * @param boolean $pbRecursive Traverse flexform nodes recursively
 		 * @return Array with flex content
 		 */
-		protected function aGetFlexContent ($psStructure, $pbRecursive=true) {
+		protected function aGetFlexContent ($psStructure, $pbRecursive = TRUE) {
 			$aFlexData = array();
 
 			if (is_string($psStructure) && strlen($psStructure)) {
 				if (substr($psStructure, 0, 5) == 'FILE:' || strtolower(substr($psStructure, -4)) == '.xml') {
 					// Get flexform from file
-					$sFileName = t3lib_div::getFileAbsFileName(str_replace('FILE:','',$psStructure));
+					$sFileName = t3lib_div::getFileAbsFileName(str_replace('FILE:', '', $psStructure));
 					if ($sFileName && @is_file($sFileName)) {
 						$aFlexData = t3lib_div::xml2array(t3lib_div::getUrl($sFileName));
 					}
 				} else {
-					// Else get it from value
+					// Get flexform from value
 					$aFlexData = t3lib_div::xml2array($psStructure);
 				}
 
@@ -277,12 +148,189 @@
 		/**
 		 * Walk through the flex array to find external flexform definitions
 		 *
+		 * @param mixed $pmItem Current flexform node
 		 * @return Array with complete flex structure
 		 */
-		protected function aGetExternalFlex (&$mItem, $sKey) {
-			if (is_string($mItem) && strtolower(substr($mItem, -4)) == '.xml') {
-				$mItem = $this->aGetFlexContent($mItem, false);
+		protected function aGetExternalFlex (&$pmItem) {
+			if (is_string($pmItem) && strtolower(substr($pmItem, -4)) == '.xml') {
+				$pmItem = $this->aGetFlexContent($pmItem, FALSE);
 			}
+		}
+
+
+		/**
+		 * Get speaking extension name from ext_emconf.php
+		 *
+		 * @param string $psExtKey Extension key
+		 * @return string with speaking name
+		 */
+		protected function sGetExtName ($psExtKey) {
+			if (!strlen($psExtKey)) {
+				return '';
+			}
+
+			$sResult = $psExtKey;
+
+			if (is_array($GLOBALS['TYPO3_LOADED_EXT'])) {
+				$sFileName = $GLOBALS['TYPO3_LOADED_EXT'][$psExtKey]['siteRelPath'] . 'ext_emconf.php';
+				$sFileName = t3lib_div::getFileAbsFileName($sFileName);
+
+				if ($sFileName && @is_file($sFileName)) {
+					$_EXTKEY = $psExtKey;
+					$EM_CONF = array();
+					include($sFileName);
+
+					if (is_array($EM_CONF[$psExtKey]) && strlen($EM_CONF[$psExtKey]['title'])) {
+						$sResult = $EM_CONF[$psExtKey]['title'];
+					}
+				}
+			}
+
+			return $sResult;
+		}
+
+
+		/**
+		 * Get access list items from flexform
+		 *
+		 * @param array  $paStructure Flexform structure
+		 * @param string $psExtKey    Extension key
+		 * @param string $psExtName   Extension name
+		 * @return array
+		 */
+		protected function aGetAccessListItems(array $paStructure, $psExtKey, $psExtName) {
+			if (empty($paStructure['ROOT']['el']) || !is_array($paStructure['ROOT']['el']) || empty($psExtKey) || empty($psExtName)) {
+				return array();
+			}
+
+			$sLabel  = "[FX] %s: %s";
+			$sIdent  = "tt_content:%s_%s";
+			$aReturn = array();
+
+			foreach ($paStructure['ROOT']['el'] as $sFieldName => $aConfig) {
+				$sFieldLabel = (!empty($aConfig['TCEforms']['label'])) ? $GLOBALS['LANG']->sl($aConfig['TCEforms']['label']) : '';
+				$sFieldLabel = (!empty($sFieldLabel)) ? $sFieldLabel : $sFieldName;
+
+				$aReturn[] = array(
+					sprintf($sLabel, $psExtName, rtrim($sFieldLabel, ':')),
+					sprintf($sIdent, $psExtKey,  rtrim($sFieldName, '. ')),
+				);
+			}
+
+			return $aReturn;
+		}
+
+
+		/**
+		 * Remove excluded flexform fields in backend form
+		 *
+		 * @param array  $paStructure Flexform structure
+		 * @param array  $paConfig    Field configuration
+		 * @param array  $paRow       Current table row
+		 * @param string $psTable     Current table
+		 * @param string $psFieldName Current field name
+		 */
+		public function getFlexFormDS_postProcessDS (array &$paStructure, array $paConfig, array $paRow, $psTable, $psFieldName) {
+			$sExtKey     = $this->sGetExtKeyFromRow($paRow);
+			$aFieldNames = $this->aGetExcludedFields($sExtKey, $paRow['pid']);
+
+			// Get flexform sheets
+			if (isset($paStructure['sheets'])) {
+				$aSheets = &$paStructure['sheets'];
+			} else {
+				$aSheets = array(&$paStructure);
+			}
+
+			// Remove excluded fields and empty tabs
+			if (is_array($aFieldNames)) {
+				foreach ($aFieldNames as $sFieldName) {
+					foreach ($aSheets as $mKey => $mTab) {
+
+						// Check for file reference
+						if (is_string($mTab) && strtolower(substr($mTab, -4)) == '.xml') {
+							$mTab = $this->aGetFlexContent($mTab);
+						}
+
+						// Remove field
+						if (!empty($mTab['ROOT']['el']) && is_array($mTab['ROOT']['el'])
+						 && array_key_exists($sFieldName, $mTab['ROOT']['el'])) {
+							unset($aSheets[$mKey]['ROOT']['el'][$sFieldName]);
+						}
+
+						// Remove whole tab if empty
+						if (empty($aSheets[$mKey]['ROOT']['el'])) {
+							unset($aSheets[$mKey]);
+						}
+					}
+				}
+			}
+		}
+
+
+		/**
+		 * Get extension key from db fields
+		 *
+		 * @param array $paRow Table row to check for extension key
+		 * @return String with extension key
+		 */
+		protected function sGetExtKeyFromRow (array $paRow) {
+			$aExtKeys  = $GLOBALS['TYPO3_LOADED_EXT'];
+			$aDBFields = array('list_type', 'CType', 'pi_flexform');
+
+			// Search in db fields for extension key
+			foreach ($aDBFields as $sField) {
+				if (empty($paRow[$sField])) {
+					continue;
+				}
+
+				$sTempKey  = str_replace(array_keys($this->aReplace), array_values($this->aReplace), $paRow[$sField]);
+				$sFinalKey = '';
+
+				// Check if extension key exists
+				foreach ($aExtKeys as $sExtKey => $aExtData) {
+					if (strpos($sTempKey, $sExtKey) !== FALSE) {
+						return $sExtKey;
+					}
+				}
+			}
+
+			return '';
+		}
+
+
+		/**
+		 * Get a list of excluded flexform fields from db and ts_config
+		 *
+		 * @return Array with fieldnames
+		 */
+		public function aGetExcludedFields ($psExtKey, $piPID = 0) {
+			if (empty($psExtKey)) {
+				return array();
+			}
+
+			$aTSConfig = t3lib_BEfunc::getPagesTSconfig((int) $piPID);
+			$aTSConfig = $aTSConfig['TCEFORM.']['tt_content.'];
+			$aExclude  = explode(',', $GLOBALS['BE_USER']->groupData['non_exclude_fields']);
+			$aFields   = array();
+
+			// Get fields from TSConfig
+			foreach ($aTSConfig as $sKey => $aConfig) {
+				if (strpos($sKey, $psExtKey) !== FALSE && !empty($aConfig['disabled'])) {
+					$aFields[] = trim(str_replace($psExtKey . '_', '', $sKey), '. ');
+				}
+			}
+
+			// Get fields from db
+			if (is_array($aExclude)) {
+				foreach ($aExclude as $sField) {
+					list(, $sKey) = explode(':', $sField);
+					if (strpos($sKey, $psExtKey) !== FALSE) {
+						$aFields[] = str_replace($psExtKey . '_', '', $sKey);
+					}
+				}
+			}
+
+			return $aFields;
 		}
 
 	}
