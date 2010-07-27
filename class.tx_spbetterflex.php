@@ -91,6 +91,10 @@
 					$sTempKey  = str_replace(array_keys($this->aReplace), array_values($this->aReplace), $sFlexKey);
 					$sFinalKey = '';
 
+					if (empty($sTempKey)) {
+						continue;
+					}
+
 					// Check if extension key exists
 					foreach ($aExtKeys as $sExtKey => $aExtData) {
 						if (strpos($sTempKey, $sExtKey) !== FALSE) {
@@ -100,7 +104,7 @@
 						}
 					}
 
-					if (!strlen($sFinalKey)) {
+					if (empty($sFinalKey)) {
 						continue;
 					}
 
@@ -136,7 +140,7 @@
 				}
 
 				// Check for file references in tabs (e.g. EXT:comments)
-				if ($pbRecursive && is_array($aFlexData) && count($aFlexData)) {
+				if ($pbRecursive && is_array($aFlexData) && !empty($aFlexData)) {
 					array_walk_recursive($aFlexData, array($this, 'aGetExternalFlex'));
 				}
 			}
@@ -324,6 +328,11 @@
 			if (is_array($aExclude)) {
 				foreach ($aExclude as $sField) {
 					list(, $sKey) = explode(':', $sField);
+
+					if (empty($sKey)) {
+						continue;
+					}
+
 					if (strpos($sKey, $psExtKey) !== FALSE) {
 						$aFields[] = str_replace($psExtKey . '_', '', $sKey);
 					}

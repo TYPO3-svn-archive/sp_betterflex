@@ -51,6 +51,10 @@
 
 				if (is_array($aFlexItems)) {
 					foreach ($aFlexItems as $aFlexItem) {
+						if (empty($aFlexItem[0]) || empty($aFlexItem[1])) {
+							continue;
+						}
+
 						$aItems[] = array(rtrim($aFlexItem[0], ':'), $aFlexItem[1], '', '');
 					}
 				}

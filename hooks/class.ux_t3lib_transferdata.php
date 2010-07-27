@@ -66,7 +66,15 @@
 				// Highlight all excluded fields
 				if (is_array($aExcludeFields) && is_array($aFlexItems)) {
 					foreach ($aExcludeFields as $sFieldName) {
+						if (empty($sFieldName)) {
+							continue;
+						}
+
 						foreach ($aFlexItems as $aField) {
+							if (empty($aField[1])) {
+								continue;
+							}
+
 							if (strpos($aField[1], $sFieldName) !== FALSE) {
 								$aDataAcc[] = rawurlencode($aField[1]) . '|' . rawurlencode(rtrim($aField[0], ':'));
 							}
