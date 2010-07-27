@@ -226,7 +226,7 @@
 
 
 		/**
-		 * Remove excluded flexform fields in backend form
+		 * Modify flexform fields in backend form
 		 *
 		 * @param array  $paStructure Flexform structure
 		 * @param array  $paConfig    Field configuration
@@ -235,8 +235,9 @@
 		 * @param string $psFieldName Current field name
 		 */
 		public function getFlexFormDS_postProcessDS (array &$paStructure, array $paConfig, array $paRow, $psTable, $psFieldName) {
-			$sExtKey     = $this->sGetExtKeyFromRow($paRow);
-			$aFieldNames = $this->aGetExcludedFields($sExtKey, $paRow['pid']);
+			$sExtKey   = $this->sGetExtKeyFromRow($paRow);
+			$aModified = $this->aGetModifiedFields($sExtKey, $paRow['pid']);
+			$aModified = (is_array($aModified)) ? $aModified : array();
 
 			// Get flexform sheets
 			if (isset($paStructure['sheets'])) {
@@ -245,27 +246,39 @@
 				$aSheets = array(&$paStructure);
 			}
 
-			// Remove excluded fields and empty tabs
-			if (is_array($aFieldNames)) {
-				foreach ($aFieldNames as $sFieldName) {
-					foreach ($aSheets as $mKey => $mTab) {
+			foreach ($aSheets as $mKey => $mTab) {
+				// Check for file reference
+				if (is_string($mTab) && strtolower(substr($mTab, -4)) == '.xml') {
+					$mTab = $this->aGetFlexContent($mTab);
+				}
 
-						// Check for file reference
-						if (is_string($mTab) && strtolower(substr($mTab, -4)) == '.xml') {
-							$mTab = $this->aGetFlexContent($mTab);
-						}
+				if (empty($mTab['ROOT']['el']) || !is_array($mTab['ROOT']['el'])) {
+					continue;
+				}
 
-						// Remove field
-						if (!empty($mTab['ROOT']['el']) && is_array($mTab['ROOT']['el'])
-						 && array_key_exists($sFieldName, $mTab['ROOT']['el'])) {
-							unset($aSheets[$mKey]['ROOT']['el'][$sFieldName]);
-						}
+				// Traverse into each tab
+				foreach ($mTab['ROOT']['el'] as $sFieldName => $aField) {
+					foreach ($aModified as $sModifiedName => $aConfig) {
+						if ($sFieldName == $sModifiedName) {
+							// Remove excludes fields
+							if (!empty($aConfig['disabled'])) {
+								unset($aSheets[$mKey]['ROOT']['el'][$sFieldName]);
+							}
 
-						// Remove whole tab if empty
-						if (empty($aSheets[$mKey]['ROOT']['el'])) {
-							unset($aSheets[$mKey]);
+							// Modify fields
+							if (!empty($aField['TCEforms']) && is_array($aField['TCEforms']) && is_array($aConfig)) {
+								unset($aConfig['disabled']);
+								$aSheets[$mKey]['ROOT']['el'][$sFieldName]['TCEforms'] = t3lib_div::array_merge_recursive_overrule($aField['TCEforms'], $aConfig);
+							}
+
+							unset($aModified[$sModifiedName]);
 						}
 					}
+				}
+
+				// Remove emtpy tabs
+				if (empty($aSheets[$mKey]['ROOT']['el'])) {
+					unset($aSheets[$mKey]);
 				}
 			}
 		}
@@ -303,24 +316,31 @@
 
 
 		/**
-		 * Get a list of excluded flexform fields from db and ts_config
+		 * Get a list of modified flexform fields from db and ts_config
 		 *
-		 * @return Array with fieldnames
+		 * @return Array with fields
 		 */
-		public function aGetExcludedFields ($psExtKey, $piPID = 0) {
+		public function aGetModifiedFields ($psExtKey, $piPID = 0) {
 			if (empty($psExtKey)) {
 				return array();
 			}
 
+			if ($piPID < 1) {
+				preg_match('/id=(.*)/', t3lib_div::_GP('returnUrl'), $aMatches);
+				$piPID = (!empty($aMatches[1])) ? $aMatches[1] : 0;
+			}
+
 			$aTSConfig = t3lib_BEfunc::getPagesTSconfig((int) $piPID);
-			$aTSConfig = $aTSConfig['TCEFORM.']['tt_content.'];
+			$aTSConfig = (!empty($aTSConfig['TCEFORM.']['tt_content.'])) ? $aTSConfig['TCEFORM.']['tt_content.'] : array();
+			$aTSConfig = t3lib_div::removeDotsFromTS($aTSConfig);
 			$aExclude  = explode(',', $GLOBALS['BE_USER']->groupData['non_exclude_fields']);
 			$aFields   = array();
 
 			// Get fields from TSConfig
 			foreach ($aTSConfig as $sKey => $aConfig) {
-				if (strpos($sKey, $psExtKey) !== FALSE && !empty($aConfig['disabled'])) {
-					$aFields[] = trim(str_replace($psExtKey . '_', '', $sKey), '. ');
+				if (strpos($sKey, $psExtKey) !== FALSE && !empty($aConfig)) {
+					$sKey = trim(str_replace($psExtKey . '_', '', $sKey));
+					$aFields[$sKey] = $aConfig;
 				}
 			}
 
@@ -334,7 +354,8 @@
 					}
 
 					if (strpos($sKey, $psExtKey) !== FALSE) {
-						$aFields[] = str_replace($psExtKey . '_', '', $sKey);
+						$sKey = trim(str_replace($psExtKey . '_', '', $sKey));
+						$aFields[$sKey] = array('disabled' => TRUE);
 					}
 				}
 			}
