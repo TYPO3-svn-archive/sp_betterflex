@@ -241,45 +241,9 @@
 
 			// Get flexform sheets
 			if (isset($paStructure['sheets'])) {
-				$aSheets = &$paStructure['sheets'];
+				$paStructure['sheets'] = $this->aModifySheets($paStructure['sheets'], $aModified);
 			} else {
-				$aSheets = array(&$paStructure);
-			}
-
-			foreach ($aSheets as $mKey => $mTab) {
-				// Check for file reference
-				if (is_string($mTab) && strtolower(substr($mTab, -4)) == '.xml') {
-					$mTab = $this->aGetFlexContent($mTab);
-				}
-
-				if (empty($mTab['ROOT']['el']) || !is_array($mTab['ROOT']['el'])) {
-					continue;
-				}
-
-				// Traverse into each tab
-				foreach ($mTab['ROOT']['el'] as $sFieldName => $aField) {
-					foreach ($aModified as $sModifiedName => $aConfig) {
-						if ($sFieldName == $sModifiedName) {
-							// Remove excludes fields
-							if (!empty($aConfig['disabled'])) {
-								unset($aSheets[$mKey]['ROOT']['el'][$sFieldName]);
-							}
-
-							// Modify fields
-							if (!empty($aField['TCEforms']) && is_array($aField['TCEforms']) && is_array($aConfig)) {
-								unset($aConfig['disabled']);
-								$aSheets[$mKey]['ROOT']['el'][$sFieldName]['TCEforms'] = t3lib_div::array_merge_recursive_overrule($aField['TCEforms'], $aConfig);
-							}
-
-							unset($aModified[$sModifiedName]);
-						}
-					}
-				}
-
-				// Remove emtpy tabs
-				if (empty($aSheets[$mKey]['ROOT']['el'])) {
-					unset($aSheets[$mKey]);
-				}
+				$paStructure = @reset($this->aModifySheets(array($paStructure), $aModified));
 			}
 		}
 
@@ -361,6 +325,107 @@
 			}
 
 			return $aFields;
+		}
+
+
+		/**
+		 * Modify flexform fields
+		 *
+		 * @param array $paSheets   Flexform sheets to manipulate
+		 * @param array $paModified Modified fields
+		 * @return Array with modified sheets
+		 */
+		protected function aModifySheets(array $paSheets, array $paModified) {
+			if (empty($paSheets) || empty($paModified)) {
+				return $paSheets;
+			}
+
+			foreach ($paSheets as $mKey => $mTab) {
+				// Check for file reference
+				if (is_string($mTab) && strtolower(substr($mTab, -4)) == '.xml') {
+					$mTab = $this->aGetFlexContent($mTab);
+				}
+
+				if (empty($mTab['ROOT']['el']) || !is_array($mTab['ROOT']['el'])) {
+					continue;
+				}
+
+				// Modify each configured field
+				foreach ($paModified as $sFieldName => $aConfig) {
+					if (!isset($paSheets[$mKey]['ROOT']['el'][$sFieldName])) {
+						continue;
+					}
+
+					$aField       = $paSheets[$mKey]['ROOT']['el'][$sFieldName];
+					$aRemoveItems = (!empty($aConfig['removeItems'])) ? t3lib_div::trimExplode(',', $aConfig['removeItems'], TRUE) : array();
+					$aRenameItems = (!empty($aConfig['altLabels'])) ? $aConfig['altLabels'] : array();
+					$aAddItems    = (!empty($aConfig['addItems']))  ? $aConfig['addItems']  : array();
+
+					unset($paModified[$sFieldName]);
+					unset($aConfig['removeItems']);
+					unset($aConfig['altLabels']);
+					unset($aConfig['addItems']);
+
+					// Remove excludes fields
+					if (!empty($aConfig['disabled'])) {
+						unset($paSheets[$mKey]['ROOT']['el'][$sFieldName]);
+						continue;
+					}
+
+					// Modify fields
+					if (!empty($aField['TCEforms']) && is_array($aField['TCEforms']) && is_array($aConfig)) {
+						$paSheets[$mKey]['ROOT']['el'][$sFieldName]['TCEforms'] = t3lib_div::array_merge_recursive_overrule($aField['TCEforms'], $aConfig);
+					}
+
+					if ((!empty($aRemoveItems) || !empty($aRenameItems)) && isset($aField['TCEforms']['config']['items']) && is_array($aField['TCEforms']['config']['items'])) {
+						foreach ($aField['TCEforms']['config']['items'] as $sItemKey => $aItemConfig) {
+							if (empty($aItemConfig[1])) {
+								continue; // Option has no key, no manipulation possible
+							}
+
+							$sItemIdent = strtolower($aItemConfig[1]);
+
+							// Remove options from select
+							if (!empty($aRemoveItems)) {
+								foreach ($aRemoveItems as $sRemoveKey => $sRemoveValue) {
+									if (strtolower($sRemoveValue) == $sItemIdent) {
+										unset($paSheets[$mKey]['ROOT']['el'][$sFieldName]['TCEforms']['config']['items'][$sItemKey]);
+										unset($aRemoveItems[$sRemoveKey]);
+									}
+								}
+							}
+
+							// Rename options in select
+							if (!empty($aRenameItems)) {
+								foreach ($aRenameItems as $sRenameKey => $sRenameValue) {
+									if (strtolower($sRenameKey) == $sItemIdent) {
+										$paSheets[$mKey]['ROOT']['el'][$sFieldName]['TCEforms']['config']['items'][$sItemKey][0] = $sRenameValue;
+										unset($aRenameItems[$sRenameKey]);
+									}
+								}
+							}
+						}
+					}
+
+					// Add options to select
+					if (!empty($aAddItems)) {
+						foreach ($aAddItems as $sAddKey => $sAddLabel) {
+							unset($aAddItems[$sAddKey]);
+							$paSheets[$mKey]['ROOT']['el'][$sFieldName]['TCEforms']['config']['items'][] = array(
+								$sAddLabel,
+								$sAddKey,
+							);
+						}
+					}
+				}
+
+				// Remove empty tabs
+				if (empty($paSheets[$mKey]['ROOT']['el'])) {
+					unset($paSheets[$mKey]);
+				}
+			}
+
+			return $paSheets;
 		}
 
 	}
