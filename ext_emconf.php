@@ -3,7 +3,7 @@
 ########################################################################
 # Extension Manager/Repository config file for ext "sp_betterflex".
 #
-# Auto generated 29-07-2010 23:45
+# Auto generated 29-07-2010 23:52
 #
 # Manual updates:
 # Only the data in the array - everything else is removed by next
@@ -12,7 +12,7 @@
 
 $EM_CONF[$_EXTKEY] = array(
 	'title' => 'Better Flexforms',
-	'description' => 'Exclude static flexform fields made by extensions like normal table fields in backend group configuration or via TSConfig.',
+	'description' => 'Modify and exclude flexform fields like normal table fields via backend group configuration or page TSConfig.',
 	'category' => 'be',
 	'shy' => '',
 	'dependencies' => '',
