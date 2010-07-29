@@ -1,32 +1,40 @@
 <?php
 	/***************************************************************
-	*  Copyright notice
-	*
-	*  (c) 2010 Kai Vogel <kai.vogel ( at ) speedprogs.de>
-	*  All rights reserved
-	*
-	*  This script is part of the TYPO3 project. The TYPO3 project is
-	*  free software; you can redistribute it and/or modify
-	*  it under the terms of the GNU General Public License as published by
-	*  the Free Software Foundation; either version 2 of the License, or
-	*  (at your option) any later version.
-	*
-	*  The GNU General Public License can be found at
-	*  http://www.gnu.org/copyleft/gpl.html.
-	*
-	*  This script is distributed in the hope that it will be useful,
-	*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-	*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	*  GNU General Public License for more details.
-	*
-	*  This copyright notice MUST APPEAR in all copies of the script!
-	***************************************************************/
+	 *  Copyright notice
+	 *
+	 *  (c) 2010 Kai Vogel <kai.vogel ( at ) speedprogs.de>
+	 *  All rights reserved
+	 *
+	 *  This script is part of the TYPO3 project. The TYPO3 project is
+	 *  free software; you can redistribute it and/or modify
+	 *  it under the terms of the GNU General Public License as published by
+	 *  the Free Software Foundation; either version 2 of the License, or
+	 *  (at your option) any later version.
+	 *
+	 *  The GNU General Public License can be found at
+	 *  http://www.gnu.org/copyleft/gpl.html.
+	 *
+	 *  This script is distributed in the hope that it will be useful,
+	 *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	 *  GNU General Public License for more details.
+	 *
+	 *  This copyright notice MUST APPEAR in all copies of the script!
+	 ***************************************************************/
 
 
+	/**
+	 * Flexform manipulation class for the 'sp_betterflex' extension.
+	 *
+	 * @author     Kai Vogel <kai.vogel ( at ) speedprogs.de>
+	 * @package    TYPO3
+	 * @subpackage tx_spbetterflex
+	 */
 	class tx_spbetterflex {
 
 		/**
 		 * @var array Replacements for old extensions
+		 * @access protected
 		 */
 		protected $aReplace = array(
 				'2' => 'tt_board',
@@ -40,9 +48,10 @@
 		/**
 		 * Get exclude items
 		 *
-		 * @return Array with all flexform fields
+		 * @return array
+		 * @access public
 		 */
-		public function aGetFlexItems () {
+		public function aGetFlexItems() {
 			$aReturn = array();
 
 			// Get registered flexforms
@@ -51,20 +60,10 @@
 				return array();
 			}
 
+			// Add flexform fields
 			foreach ($aFlexForms as $sExtKey => $aFlexform) {
-				// Get extension name
-				$sExtName = $this->sGetExtName($sExtKey);
-
-				// Get flexform sheets
-				$aSheets = (isset($aFlexform['sheets'])) ? $aFlexform['sheets'] : array($aFlexform);
-
-				// Add flexform fields
-				if (is_array($aSheets)) {
-					foreach ($aSheets as $aTab) {
-						$aItems  = $this->aGetAccessListItems($aTab, $sExtKey, $sExtName);
-						$aReturn = array_merge($aReturn, $aItems);
-					}
-				}
+				$aItems  = $this->aGetAccessListItems($aFlexform, $sExtKey);
+				$aReturn = array_merge($aReturn, $aItems);
 			}
 
 			return $aReturn;
@@ -74,9 +73,10 @@
 		/**
 		 * Get an array of loaded flexforms from $TCA
 		 *
-		 * @return Array with flexforms
+		 * @return array
+		 * @access protected
 		 */
-		protected function aGetFlexForms () {
+		protected function aGetFlexForms() {
 			$aExtKeys = $GLOBALS['TYPO3_LOADED_EXT'];
 			$aForms   = array();
 			$aResult  = array();
@@ -88,16 +88,19 @@
 			// Get extensions with registered flexform
 			if (is_array($aLoadedForms)) {
 				foreach ($aLoadedForms as $sFlexKey => $sFlexData) {
-					$sTempKey  = str_replace(array_keys($this->aReplace), array_values($this->aReplace), $sFlexKey);
 					$sFinalKey = '';
 
-					if (empty($sTempKey)) {
+					if ((int) $sFlexKey) {
+						$sFlexKey = str_replace(array_keys($this->aReplace), array_values($this->aReplace), $sFlexKey);
+					}
+
+					if (empty($sFlexKey)) {
 						continue;
 					}
 
 					// Check if extension key exists
 					foreach ($aExtKeys as $sExtKey => $aExtData) {
-						if (strpos($sTempKey, $sExtKey) !== FALSE) {
+						if (strpos($sFlexKey, $sExtKey) !== FALSE) {
 							$sFinalKey = $sExtKey;
 							unset($aExtKeys[$sExtKey]);
 							break;
@@ -120,11 +123,11 @@
 		/**
 		 * Load a flexform structure from file or string into an array
 		 *
-		 * @param string  $psStructure XML structure of the flexform
-		 * @param boolean $pbRecursive Traverse flexform nodes recursively
-		 * @return Array with flex content
+		 * @param string $psStructure XML structure of the flexform
+		 * @return array
+		 * @access
 		 */
-		protected function aGetFlexContent ($psStructure, $pbRecursive = TRUE) {
+		protected function aGetFlexContent($psStructure) {
 			$aFlexData = array();
 
 			if (is_string($psStructure) && strlen($psStructure)) {
@@ -139,10 +142,8 @@
 					$aFlexData = t3lib_div::xml2array($psStructure);
 				}
 
-				// Check for file references in tabs (e.g. EXT:comments)
-				if ($pbRecursive && is_array($aFlexData) && !empty($aFlexData)) {
-					array_walk_recursive($aFlexData, array($this, 'aGetExternalFlex'));
-				}
+				// Check for file references in sheets
+				$aFlexData = t3lib_div::resolveAllSheetsInDS($aFlexData);
 			}
 
 			return $aFlexData;
@@ -150,15 +151,43 @@
 
 
 		/**
-		 * Walk through the flex array to find external flexform definitions
+		 * Get access list items from flexform
 		 *
-		 * @param mixed $pmItem Current flexform node
-		 * @return Array with complete flex structure
+		 * @param array  $paStructure Flexform structure
+		 * @param string $psExtKey    Extension key
+		 * @param string $psExtName   Extension name
+		 * @return array
+		 * @access protected
 		 */
-		protected function aGetExternalFlex (&$pmItem) {
-			if (is_string($pmItem) && strtolower(substr($pmItem, -4)) == '.xml') {
-				$pmItem = $this->aGetFlexContent($pmItem, FALSE);
+		protected function aGetAccessListItems(array $paStructure, $psExtKey) {
+			if (empty($paStructure['sheets']) || !is_array($paStructure['sheets']) || empty($psExtKey)) {
+				return;
 			}
+
+			$sLabel   = "[FX] %s: %s";
+			$sIdent   = "tt_content:%s_%s";
+			$sExtName = $this->sGetExtName($psExtKey);
+			$aReturn  = array();
+
+			// Traverse into sheets
+			foreach ($paStructure['sheets'] as $aSheet) {
+				if (empty($aSheet['ROOT']['el']) || !is_array($aSheet['ROOT']['el'])) {
+					continue;
+				}
+
+				// Get all fields in sheet
+				foreach ($aSheet['ROOT']['el'] as $sFieldName => $aConfig) {
+					$sFieldLabel = (!empty($aConfig['TCEforms']['label'])) ? $GLOBALS['LANG']->sl($aConfig['TCEforms']['label']) : '';
+					$sFieldLabel = (!empty($sFieldLabel)) ? $sFieldLabel : $sFieldName;
+
+					$aReturn[] = array(
+						sprintf($sLabel, $sExtName, rtrim($sFieldLabel, ':')),
+						sprintf($sIdent, $psExtKey, rtrim($sFieldName, '. ')),
+					);
+				}
+			}
+
+			return $aReturn;
 		}
 
 
@@ -166,10 +195,11 @@
 		 * Get speaking extension name from ext_emconf.php
 		 *
 		 * @param string $psExtKey Extension key
-		 * @return string with speaking name
+		 * @return string
+		 * @access protected
 		 */
-		protected function sGetExtName ($psExtKey) {
-			if (!strlen($psExtKey)) {
+		protected function sGetExtName($psExtKey) {
+			if (empty($psExtKey)) {
 				return '';
 			}
 
@@ -195,37 +225,6 @@
 
 
 		/**
-		 * Get access list items from flexform
-		 *
-		 * @param array  $paStructure Flexform structure
-		 * @param string $psExtKey    Extension key
-		 * @param string $psExtName   Extension name
-		 * @return array
-		 */
-		protected function aGetAccessListItems(array $paStructure, $psExtKey, $psExtName) {
-			if (empty($paStructure['ROOT']['el']) || !is_array($paStructure['ROOT']['el']) || empty($psExtKey) || empty($psExtName)) {
-				return array();
-			}
-
-			$sLabel  = "[FX] %s: %s";
-			$sIdent  = "tt_content:%s_%s";
-			$aReturn = array();
-
-			foreach ($paStructure['ROOT']['el'] as $sFieldName => $aConfig) {
-				$sFieldLabel = (!empty($aConfig['TCEforms']['label'])) ? $GLOBALS['LANG']->sl($aConfig['TCEforms']['label']) : '';
-				$sFieldLabel = (!empty($sFieldLabel)) ? $sFieldLabel : $sFieldName;
-
-				$aReturn[] = array(
-					sprintf($sLabel, $psExtName, rtrim($sFieldLabel, ':')),
-					sprintf($sIdent, $psExtKey,  rtrim($sFieldName, '. ')),
-				);
-			}
-
-			return $aReturn;
-		}
-
-
-		/**
 		 * Modify flexform fields in backend form
 		 *
 		 * @param array  $paStructure Flexform structure
@@ -233,17 +232,39 @@
 		 * @param array  $paRow       Current table row
 		 * @param string $psTable     Current table
 		 * @param string $psFieldName Current field name
+		 * @access public
 		 */
-		public function getFlexFormDS_postProcessDS (array &$paStructure, array $paConfig, array $paRow, $psTable, $psFieldName) {
-			$sExtKey   = $this->sGetExtKeyFromRow($paRow);
-			$aModified = $this->aGetModifiedFields($sExtKey, $paRow['pid']);
-			$aModified = (is_array($aModified)) ? $aModified : array();
+		public function getFlexFormDS_postProcessDS(array &$paStructure, array $paConfig, array $paRow, $psTable, $psFieldName) {
+			$sExtKey      = $this->sGetExtKeyFromRow($paRow);
+			$aModified    = $this->aGetModifiedFields($sExtKey, $paRow['pid']);
+			$aModified    = (is_array($aModified)) ? $aModified : array();
+			$bSingleSheet = (!isset($paStructure['sheets']) || !is_array($paStructure['sheets']));
+			$aMetaConf    = (!empty($paStructure['meta'])) ? $paStructure['meta'] : array();
+			$paStructure  = t3lib_div::resolveAllSheetsInDS($paStructure);
 
-			// Get flexform sheets
-			if (isset($paStructure['sheets'])) {
-				$paStructure['sheets'] = $this->aModifySheets($paStructure['sheets'], $aModified);
-			} else {
-				$paStructure = @reset($this->aModifySheets(array($paStructure), $aModified));
+			// Modify flexform sheets
+			foreach ($paStructure['sheets'] as $sName => $aSheet) {
+				if (empty($aSheet['ROOT']['el']) || !is_array($aSheet['ROOT']['el'])) {
+					continue;
+				}
+
+				// Modify all configured fields in sheet
+				$paStructure['sheets'][$sName]['ROOT']['el'] = $this->aModifyFields($aSheet['ROOT']['el'], $aModified);
+
+				// Remove empty tabs
+				if (empty($paStructure['sheets'][$sName]['ROOT']['el'])) {
+					unset($paStructure['sheets'][$sName]);
+				}
+			}
+
+			// Reverse single flexform structure
+			if ($bSingleSheet && isset($paStructure['sheets']['sDEF'])) {
+				$paStructure = $paStructure['sheets']['sDEF'];
+			}
+
+			// Reverse meta configuration
+			if (!empty($aMetaConf)) {
+				$paStructure['meta'] = $aMetaConf;
 			}
 		}
 
@@ -252,9 +273,10 @@
 		 * Get extension key from db fields
 		 *
 		 * @param array $paRow Table row to check for extension key
-		 * @return String with extension key
+		 * @return string
+		 * @access protected
 		 */
-		protected function sGetExtKeyFromRow (array $paRow) {
+		protected function sGetExtKeyFromRow(array $paRow) {
 			$aExtKeys  = $GLOBALS['TYPO3_LOADED_EXT'];
 			$aDBFields = array('list_type', 'CType', 'pi_flexform');
 
@@ -264,12 +286,16 @@
 					continue;
 				}
 
-				$sTempKey  = str_replace(array_keys($this->aReplace), array_values($this->aReplace), $paRow[$sField]);
 				$sFinalKey = '';
+				$sRowKey   = $paRow[$sField];
+
+				if ((int) $sRowKey) {
+					$sRowKey = str_replace(array_keys($this->aReplace), array_values($this->aReplace), $sRowKey);
+				}
 
 				// Check if extension key exists
 				foreach ($aExtKeys as $sExtKey => $aExtData) {
-					if (strpos($sTempKey, $sExtKey) !== FALSE) {
+					if (strpos($sRowKey, $sExtKey) !== FALSE) {
 						return $sExtKey;
 					}
 				}
@@ -282,9 +308,12 @@
 		/**
 		 * Get a list of modified flexform fields from db and ts_config
 		 *
-		 * @return Array with fields
+		 * @param string  $psExtKey Extension key
+		 * @param integer $piPID    PID of current dataset
+		 * @return array
+		 * @access public
 		 */
-		public function aGetModifiedFields ($psExtKey, $piPID = 0) {
+		public function aGetModifiedFields($psExtKey, $piPID = 0) {
 			if (empty($psExtKey)) {
 				return array();
 			}
@@ -331,106 +360,92 @@
 		/**
 		 * Modify flexform fields
 		 *
-		 * @param array $paSheets   Flexform sheets to manipulate
+		 * @param array $paSheets   Flexform sheet to manipulate
 		 * @param array $paModified Modified fields
-		 * @return Array with modified sheets
+		 * @return array
+		 * @access protected
 		 */
-		protected function aModifySheets(array $paSheets, array $paModified) {
-			if (empty($paSheets) || empty($paModified)) {
-				return $paSheets;
+		protected function aModifyFields(array $paFields, array &$paModified) {
+			if (empty($paFields) || empty($paModified)) {
+				return $paFields;
 			}
 
-			foreach ($paSheets as $mKey => $mTab) {
-				// Check for file reference
-				if (is_string($mTab) && strtolower(substr($mTab, -4)) == '.xml') {
-					$mTab = $this->aGetFlexContent($mTab);
-				}
-
-				if (empty($mTab['ROOT']['el']) || !is_array($mTab['ROOT']['el'])) {
+			// Modify each configured field
+			foreach ($paModified as $sFieldName => $aConfig) {
+				if (!isset($paFields[$sFieldName])) {
 					continue;
 				}
 
-				// Modify each configured field
-				foreach ($paModified as $sFieldName => $aConfig) {
-					if (!isset($paSheets[$mKey]['ROOT']['el'][$sFieldName])) {
-						continue;
-					}
+				$aField       = $paFields[$sFieldName];
+				$aRemoveItems = (!empty($aConfig['removeItems'])) ? t3lib_div::trimExplode(',', $aConfig['removeItems'], TRUE) : array();
+				$aRenameItems = (!empty($aConfig['altLabels'])) ? $aConfig['altLabels'] : array();
+				$aAddItems    = (!empty($aConfig['addItems']))  ? $aConfig['addItems']  : array();
 
-					$aField       = $paSheets[$mKey]['ROOT']['el'][$sFieldName];
-					$aRemoveItems = (!empty($aConfig['removeItems'])) ? t3lib_div::trimExplode(',', $aConfig['removeItems'], TRUE) : array();
-					$aRenameItems = (!empty($aConfig['altLabels'])) ? $aConfig['altLabels'] : array();
-					$aAddItems    = (!empty($aConfig['addItems']))  ? $aConfig['addItems']  : array();
+				unset($paModified[$sFieldName]);
+				unset($aConfig['removeItems']);
+				unset($aConfig['altLabels']);
+				unset($aConfig['addItems']);
 
-					unset($paModified[$sFieldName]);
-					unset($aConfig['removeItems']);
-					unset($aConfig['altLabels']);
-					unset($aConfig['addItems']);
+				// Remove excludes fields
+				if (!empty($aConfig['disabled'])) {
+					unset($paFields[$sFieldName]);
+					continue;
+				}
 
-					// Remove excludes fields
-					if (!empty($aConfig['disabled'])) {
-						unset($paSheets[$mKey]['ROOT']['el'][$sFieldName]);
-						continue;
-					}
+				// Modify fields
+				if (!empty($aField['TCEforms']) && is_array($aField['TCEforms']) && is_array($aConfig)) {
+					$paFields[$sFieldName]['TCEforms'] = t3lib_div::array_merge_recursive_overrule($aField['TCEforms'], $aConfig);
+				}
 
-					// Modify fields
-					if (!empty($aField['TCEforms']) && is_array($aField['TCEforms']) && is_array($aConfig)) {
-						$paSheets[$mKey]['ROOT']['el'][$sFieldName]['TCEforms'] = t3lib_div::array_merge_recursive_overrule($aField['TCEforms'], $aConfig);
-					}
+				if ((!empty($aRemoveItems) || !empty($aRenameItems)) && isset($aField['TCEforms']['config']['items']) && is_array($aField['TCEforms']['config']['items'])) {
+					foreach ($aField['TCEforms']['config']['items'] as $sItemKey => $aItemConfig) {
+						if (empty($aItemConfig[1])) {
+							continue; // Option has no key, no manipulation possible
+						}
 
-					if ((!empty($aRemoveItems) || !empty($aRenameItems)) && isset($aField['TCEforms']['config']['items']) && is_array($aField['TCEforms']['config']['items'])) {
-						foreach ($aField['TCEforms']['config']['items'] as $sItemKey => $aItemConfig) {
-							if (empty($aItemConfig[1])) {
-								continue; // Option has no key, no manipulation possible
-							}
+						$sItemIdent = strtolower($aItemConfig[1]);
 
-							$sItemIdent = strtolower($aItemConfig[1]);
-
-							// Remove options from select
-							if (!empty($aRemoveItems)) {
-								foreach ($aRemoveItems as $sRemoveKey => $sRemoveValue) {
-									if (strtolower($sRemoveValue) == $sItemIdent) {
-										unset($paSheets[$mKey]['ROOT']['el'][$sFieldName]['TCEforms']['config']['items'][$sItemKey]);
-										unset($aRemoveItems[$sRemoveKey]);
-									}
-								}
-							}
-
-							// Rename options in select
-							if (!empty($aRenameItems)) {
-								foreach ($aRenameItems as $sRenameKey => $sRenameValue) {
-									if (strtolower($sRenameKey) == $sItemIdent) {
-										$paSheets[$mKey]['ROOT']['el'][$sFieldName]['TCEforms']['config']['items'][$sItemKey][0] = $sRenameValue;
-										unset($aRenameItems[$sRenameKey]);
-									}
+						// Remove options from select
+						if (!empty($aRemoveItems)) {
+							foreach ($aRemoveItems as $sRemoveKey => $sRemoveValue) {
+								if (strtolower($sRemoveValue) == $sItemIdent) {
+									unset($paFields[$sFieldName]['TCEforms']['config']['items'][$sItemKey]);
+									unset($aRemoveItems[$sRemoveKey]);
 								}
 							}
 						}
-					}
 
-					// Add options to select
-					if (!empty($aAddItems)) {
-						foreach ($aAddItems as $sAddKey => $sAddLabel) {
-							unset($aAddItems[$sAddKey]);
-							$paSheets[$mKey]['ROOT']['el'][$sFieldName]['TCEforms']['config']['items'][] = array(
-								$sAddLabel,
-								$sAddKey,
-							);
+						// Rename options in select
+						if (!empty($aRenameItems)) {
+							foreach ($aRenameItems as $sRenameKey => $sRenameValue) {
+								if (strtolower($sRenameKey) == $sItemIdent) {
+									$paFields[$sFieldName]['TCEforms']['config']['items'][$sItemKey][0] = $sRenameValue;
+									unset($aRenameItems[$sRenameKey]);
+								}
+							}
 						}
 					}
 				}
 
-				// Remove empty tabs
-				if (empty($paSheets[$mKey]['ROOT']['el'])) {
-					unset($paSheets[$mKey]);
+				// Add options to select
+				if (!empty($aAddItems)) {
+					foreach ($aAddItems as $sAddKey => $sAddLabel) {
+						unset($aAddItems[$sAddKey]);
+						$paFields[$sFieldName]['TCEforms']['config']['items'][] = array(
+							$sAddLabel,
+							$sAddKey,
+						);
+					}
 				}
 			}
 
-			return $paSheets;
+			return $paFields;
 		}
 
 	}
 
 
+	// XCLASS
 	if (defined('TYPO3_MODE') && $TYPO3_CONF_VARS[TYPO3_MODE]['XCLASS']['ext/sp_betterflex/class.tx_spbetterflex.php']) {
 		include_once($TYPO3_CONF_VARS[TYPO3_MODE]['XCLASS']['ext/sp_betterflex/class.tx_spbetterflex.php']);
 	}

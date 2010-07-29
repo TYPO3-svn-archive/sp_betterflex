@@ -3,7 +3,7 @@
 ########################################################################
 # Extension Manager/Repository config file for ext "sp_betterflex".
 #
-# Auto generated 27-07-2010 13:33
+# Auto generated 29-07-2010 23:45
 #
 # Manual updates:
 # Only the data in the array - everything else is removed by next
@@ -39,7 +39,7 @@ $EM_CONF[$_EXTKEY] = array(
 		'suggests' => array(
 		),
 	),
-	'_md5_values_when_last_written' => 'a:8:{s:9:"ChangeLog";s:4:"821f";s:25:"class.tx_spbetterflex.php";s:4:"bcd6";s:12:"ext_icon.gif";s:4:"5070";s:17:"ext_localconf.php";s:4:"4113";s:14:"ext_tables.php";s:4:"1c8a";s:14:"doc/manual.sxw";s:4:"cb23";s:33:"hooks/class.ux_t3lib_tceforms.php";s:4:"15a5";s:37:"hooks/class.ux_t3lib_transferdata.php";s:4:"62e0";}',
+	'_md5_values_when_last_written' => 'a:8:{s:9:"ChangeLog";s:4:"821f";s:25:"class.tx_spbetterflex.php";s:4:"63ea";s:12:"ext_icon.gif";s:4:"5070";s:17:"ext_localconf.php";s:4:"d569";s:14:"ext_tables.php";s:4:"af29";s:14:"doc/manual.sxw";s:4:"cb23";s:33:"hooks/class.ux_t3lib_tceforms.php";s:4:"06b3";s:37:"hooks/class.ux_t3lib_transferdata.php";s:4:"66ed";}',
 	'suggests' => array(
 	),
 );
