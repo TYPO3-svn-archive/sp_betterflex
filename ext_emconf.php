@@ -1,13 +1,13 @@
 <?php
 
 ########################################################################
-# Extension Manager/Repository config file for ext: "sp_betterflex"
+# Extension Manager/Repository config file for ext "sp_betterflex".
 #
-# Auto generated 30-07-2010 14:43
+# Auto generated 31-07-2010 07:03
 #
 # Manual updates:
-# Only the data in the array - anything else is removed by next write.
-# "version" and "dependencies" must not be touched!
+# Only the data in the array - everything else is removed by next
+# writing. "version" and "dependencies" must not be touched!
 ########################################################################
 
 $EM_CONF[$_EXTKEY] = array(
@@ -29,7 +29,7 @@ $EM_CONF[$_EXTKEY] = array(
 	'author' => 'Kai Vogel',
 	'author_email' => 'kai.vogel ( at ) speedprogs.de',
 	'author_company' => 'www.speedprogs.de',
-	'version' => '2.0.0',
+	'version' => '2.0.1',
 	'constraints' => array(
 		'depends' => array(
 			'php' => '5.2.0-0.0.0',
@@ -40,7 +40,7 @@ $EM_CONF[$_EXTKEY] = array(
 		'suggests' => array(
 		),
 	),
-	'_md5_values_when_last_written' => 'a:8:{s:9:"ChangeLog";s:4:"821f";s:25:"class.tx_spbetterflex.php";s:4:"63ea";s:12:"ext_icon.gif";s:4:"5070";s:17:"ext_localconf.php";s:4:"d569";s:14:"ext_tables.php";s:4:"af29";s:14:"doc/manual.sxw";s:4:"a5aa";s:33:"hooks/class.ux_t3lib_tceforms.php";s:4:"06b3";s:37:"hooks/class.ux_t3lib_transferdata.php";s:4:"66ed";}',
+	'_md5_values_when_last_written' => 'a:8:{s:9:"ChangeLog";s:4:"821f";s:25:"class.tx_spbetterflex.php";s:4:"28c3";s:12:"ext_icon.gif";s:4:"5070";s:17:"ext_localconf.php";s:4:"d569";s:14:"ext_tables.php";s:4:"af29";s:14:"doc/manual.sxw";s:4:"a5aa";s:33:"hooks/class.ux_t3lib_tceforms.php";s:4:"06b3";s:37:"hooks/class.ux_t3lib_transferdata.php";s:4:"66ed";}',
 	'suggests' => array(
 	),
 );
