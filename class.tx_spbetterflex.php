@@ -123,12 +123,11 @@
 		/**
 		 * Load a flexform structure from file or string into an array
 		 *
-		 * @param string  $psStructure XML structure of the flexform
-		 * @param boolean $pbRecursive Parse only structure recursive
+		 * @param string $psStructure XML structure of the flexform
 		 * @return array
 		 * @access
 		 */
-		protected function aGetFlexContent($psStructure, $pbRecursive = TRUE) {
+		protected function aGetFlexContent($psStructure) {
 			$aFlexData = array();
 
 			if (is_string($psStructure) && strlen($psStructure)) {
@@ -144,9 +143,7 @@
 				}
 
 				// Check for file references in sheets
-				if ($pbRecursive) {
-					$aFlexData = t3lib_div::resolveAllSheetsInDS($aFlexData);
-				}
+				$aFlexData = t3lib_div::resolveAllSheetsInDS($aFlexData);
 			}
 
 			return $aFlexData;
@@ -230,21 +227,16 @@
 		/**
 		 * Modify flexform fields in backend form
 		 *
-		 * @param mixed  $pmStructure Flexform structure
+		 * @param array  $paStructure Flexform structure
 		 * @param array  $paConfig    Field configuration
 		 * @param array  $paRow       Current table row
 		 * @param string $psTable     Current table
 		 * @param string $psFieldName Current field name
 		 * @access public
 		 */
-		public function getFlexFormDS_postProcessDS(&$pmStructure, array $paConfig, array $paRow, $psTable, $psFieldName) {
-			// First parse flexform if it's not an array
-			if (is_string($pmStructure)) {
-				$pmStructure = $this->aGetFlexContent($pmStructure, FALSE);
-			}
-
-			// Stop here if structure is not an array
-			if (!is_array($pmStructure)) {
+		public function getFlexFormDS_postProcessDS(&$paStructure, $paConfig, $paRow, $psTable, $psFieldName) {
+			// Stop here if structure is not an array, it means that we got an error before
+			if (!is_array($paStructure) || !is_array($paRow)) {
 				return;
 			}
 
@@ -252,33 +244,33 @@
 			$sExtKey      = $this->sGetExtKeyFromRow($paRow);
 			$aModified    = $this->aGetModifiedFields($sExtKey, $paRow['pid']);
 			$aModified    = (is_array($aModified)) ? $aModified : array();
-			$bSingleSheet = (!isset($pmStructure['sheets']) || !is_array($pmStructure['sheets']));
-			$aMetaConf    = (!empty($pmStructure['meta'])) ? $pmStructure['meta'] : array();
-			$pmStructure  = t3lib_div::resolveAllSheetsInDS($pmStructure);
+			$bSingleSheet = (!isset($paStructure['sheets']) || !is_array($paStructure['sheets']));
+			$aMetaConf    = (!empty($paStructure['meta'])) ? $paStructure['meta'] : array();
+			$paStructure  = t3lib_div::resolveAllSheetsInDS($paStructure);
 
 			// Modify flexform sheets
-			foreach ($pmStructure['sheets'] as $sName => $aSheet) {
+			foreach ($paStructure['sheets'] as $sName => $aSheet) {
 				if (empty($aSheet['ROOT']['el']) || !is_array($aSheet['ROOT']['el'])) {
 					continue;
 				}
 
 				// Modify all configured fields in sheet
-				$pmStructure['sheets'][$sName]['ROOT']['el'] = $this->aModifyFields($aSheet['ROOT']['el'], $aModified);
+				$paStructure['sheets'][$sName]['ROOT']['el'] = $this->aModifyFields($aSheet['ROOT']['el'], $aModified);
 
 				// Remove empty tabs
-				if (empty($pmStructure['sheets'][$sName]['ROOT']['el'])) {
-					unset($pmStructure['sheets'][$sName]);
+				if (empty($paStructure['sheets'][$sName]['ROOT']['el'])) {
+					unset($paStructure['sheets'][$sName]);
 				}
 			}
 
 			// Reverse single flexform structure
-			if ($bSingleSheet && isset($pmStructure['sheets']['sDEF'])) {
-				$pmStructure = $pmStructure['sheets']['sDEF'];
+			if ($bSingleSheet && isset($paStructure['sheets']['sDEF'])) {
+				$paStructure = $paStructure['sheets']['sDEF'];
 			}
 
 			// Reverse meta configuration
 			if (!empty($aMetaConf)) {
-				$pmStructure['meta'] = $aMetaConf;
+				$paStructure['meta'] = $aMetaConf;
 			}
 		}
 
