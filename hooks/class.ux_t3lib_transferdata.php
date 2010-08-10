@@ -23,7 +23,7 @@
 	 ***************************************************************/
 
 
-	require_once(t3lib_extMgm::extPath('sp_betterflex') . 'class.tx_spbetterflex.php');
+	t3lib_div::requireOnce(t3lib_extMgm::extPath('sp_betterflex') . 'class.tx_spbetterflex.php');
 
 
 	/**
